@@ -31,7 +31,7 @@ app.get("/posts", async (req, res) => {
   const posts = await postModel.find();
 
   return res.status(200).json({
-    message: "Psts fetched successfully",
+    message: "Posts fetched successfully",
     posts,
   });
 });
