@@ -1,29 +1,71 @@
 const musicModel = require("../models/music.model.js");
-const jwt = require("jsonwebtoken");
+const { uploadFile } = require("../services/storage.service.js");
+const albumModel = require("../models/album.model.js");
 
 async function createMusic(req, res) {
-  const token = req.cookies.token;
-
-  if (!token) {
-    return res.status(401).json({
-      message: "Unauthorized",
-    });
-  }
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { title } = req.body;
+    const file = req.file;
 
-    if (decoded.role !== "artist") {
-      return res.status(403).json({
-        message: "You don't have access to create music",
-      });
-    }
+    const result = await uploadFile(file.buffer.toString("base64"));
+
+    const music = await musicModel.create({
+      uri: result.url,
+      title,
+      artist: req.user.id,
+    });
+
+    res.status(201).json({
+      message: "Music created successfully",
+      music: {
+        id: music._id,
+        uri: music.uri,
+        title: music.title,
+        artist: music.artist,
+      },
+    });
   } catch (err) {
-    return res.status(401).json({
-      message: "Unauthorized",
+    console.error(err);
+    res.status(500).json({
+      message: "Error creating music",
     });
   }
-
-  const { title } = req.body;
-  const file = req.file;
 }
+
+async function createAlbum(req, res) {
+  try {
+    const { title, musics } = req.body;
+
+    const album = await albumModel.create({
+      title,
+      artist: req.user.id,
+      musics: musics,
+    });
+
+    res.status(201).json({
+      message: "Album created successfully",
+      album: {
+        id: album._id,
+        title: album.title,
+        artist: album.artist,
+        musics: album.musics,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Error creating album",
+    });
+  }
+}
+
+async function getAllMusics(req, res) {
+  const musics = await musicModel.find().populate("artist","userName email");
+
+  res.status(200).json({
+    message: "Musics fetched successfully",
+    musics: musics,
+  });
+}
+
+module.exports = { createMusic, createAlbum,getAllMusics };
